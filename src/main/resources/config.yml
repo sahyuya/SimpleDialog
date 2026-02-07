@@ -1,0 +1,5 @@
+show-dialog-on-first-join: true
+max-playtime-hours: 3.0
+tag-duration-minutes: 60
+tag-check-interval-seconds: 60
+tag-separator: " "
