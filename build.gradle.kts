@@ -27,6 +27,8 @@ dependencies {
     compileOnly("net.kyori:adventure-text-minimessage:4.24.0")
     compileOnly("net.kyori:adventure-text-serializer-legacy:4.24.0")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+    implementation(kotlin("stdlib"))
+    implementation("com.google.code.gson:gson:2.10.1")
 }
 
 tasks {

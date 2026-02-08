@@ -1,0 +1,126 @@
+# Forms Configuration for Bedrock Edition Players (Japanese)
+#
+# テキストフォーマット:
+# 色: &0-&9, &a-&f (Minecraftカラーコード)
+# 装飾: &l(太字), &o(斜体), &n(下線), &m(取り消し線), &k(難読化)
+# リセット: &r
+#
+# 例: "&a&l大きな緑の文字" → 緑色で太字
+# 例: "&c&n赤い下線付き文字" → 赤色で下線
+
+# Welcome Screen
+welcome:
+  type: "SIMPLE_FORM"
+  title: "&6&lようこそ！"
+  content: "&eおやさいサーバーへようこそ！\n&7こちらは建築に特化したサーバーです。\n\n&bどのような目的でお越しになりましたか？"
+  buttons:
+    - text: "&f日本語 / English"
+      action: "SWITCH_LANGUAGE"
+      next: "welcome_en"
+    - text: "&a&l建築したい！"
+      action: "SELECT_PURPOSE"
+      purpose: "building"
+      next: "rules"
+    - text: "&b&l軽く観光へ"
+      action: "SELECT_PURPOSE"
+      purpose: "sightseeing"
+      next: "rules"
+
+# Rules Screen
+rules:
+  type: "SIMPLE_FORM"
+  title: "ルール"
+  content: |
+    まずこの鯖のルールについて
+    
+    ・公序良俗に適した行動をお願いします。
+    ・資源ワールド以外での資源採取は控えて下さい。
+    ・困った時は気軽にご質問を！
+    
+    詳しくはここから先へ進んで貰える
+    「初心者ガイドブック」を読んでね！
+  buttons:
+    - text: "OK"
+      action: "NEXT"
+      # Next determined by purpose
+
+# Building Purpose Screen
+building:
+  type: "SIMPLE_FORM"
+  title: "建築目的"
+  content: |
+    最初はサバイバルでの建築になります。
+    
+    建材は資源ワールドかmenuのサーバーショップから
+    入手できます。
+    
+    おすすめの建築場所は「はじめて村」です！
+    色んな初心者が訪れては最初に建築を建てる街です。
+    
+    行き方は「/spawn」とチャットに打つとロビーに行けます。
+    そのまま左に進んでニワトリが目印のゲートの
+    ビーコンを踏むことではじめて村に行けます。
+  buttons:
+    - text: "OK"
+      action: "CLOSE"
+
+# Sightseeing Purpose Screen
+sightseeing:
+  type: "SIMPLE_FORM"
+  title: "観光目的"
+  content: |
+    観光する際は他人の建築に敬意を持ち、
+    破壊・窃盗をしないように！
+    
+    「/spawn」とチャットに打つとロビーに行けます。
+    そこから様々な建築へワープできます。
+    
+    見たいジャンルを絞って頂ければ
+    優しい案内人がおすすめを紹介してくれるかもしれません！
+    
+    勿論フラフラと気になるところを見回っても大丈夫です。
+    おやさい観光お楽しみ下さい～
+  buttons:
+    - text: "見たいジャンルを選ぶ"
+      action: "NEXT"
+      next: "genres"
+    - text: "OK"
+      action: "CLOSE"
+
+# Genre Selection Screen
+genres:
+  type: "CUSTOM_FORM"
+  title: "見たいジャンル"
+  content:
+    - type: "LABEL"
+      text: "ネームタグの下に表示されます。\n※タグは時間が経つと消えます。"
+    - type: "TOGGLE"
+      text: "#和風"
+      genre: "和風"
+      default: false
+    - type: "TOGGLE"
+      text: "#中華建築"
+      genre: "中華建築"
+      default: false
+    - type: "TOGGLE"
+      text: "#ファンタジー"
+      genre: "ファンタジー"
+      default: false
+    - type: "TOGGLE"
+      text: "#洋風"
+      genre: "洋風"
+      default: false
+    - type: "TOGGLE"
+      text: "#現代建築"
+      genre: "現代建築"
+      default: false
+    - type: "TOGGLE"
+      text: "#造形"
+      genre: "造形"
+      default: false
+  buttons:
+    - text: "戻る"
+      action: "BACK"
+      next: "sightseeing"
+    - text: "決定"
+      action: "SUBMIT"

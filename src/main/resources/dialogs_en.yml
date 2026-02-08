@@ -1,0 +1,103 @@
+# Dialog Configuration for Java Edition Players (English)
+
+# Welcome Screen
+welcome_en:
+  title: "Welcome!"
+  text:
+    - "Welcome to Oyasai Server!"
+    - "This is a building-focused server."
+    - ""
+    - "What is your purpose for visiting?"
+  buttons:
+    language_switch:
+      text: "日本語"
+      type: "LINK"
+      next: "welcome"
+    building:
+      text: "I want to build!"
+      type: "LINK"
+      next: "rules_en"
+    sightseeing:
+      text: "Sightseeing"
+      type: "LINK"
+      next: "rules_en"
+
+# Rules Screen
+rules_en:
+  title: "Rules"
+  text:
+    - "First, about our server rules:"
+    - ""
+    - "・Please act in accordance with public morals."
+    - "・Please refrain from resource gathering outside the resource world."
+    - "・Feel free to ask questions when in trouble!"
+    - ""
+    - "For more details, please read the"
+    - "\"Beginner's Guidebook\" you'll receive!"
+  buttons:
+    ok:
+      text: "OK"
+      type: "LINK"
+
+# Building Purpose Screen
+building_en:
+  title: "Building Purpose"
+  text:
+    - "You'll start with survival building."
+    - ""
+    - "Materials can be obtained from the resource world"
+    - "or the server shop in the menu."
+    - ""
+    - "The recommended building location is \"Hajimete Village\"!"
+    - "It's a town where many beginners build their first structures."
+    - ""
+    - "To get there, type \"/spawn\" in chat to go to the lobby."
+    - "Then go left and step on the beacon at the gate"
+    - "marked with a chicken to reach Hajimete Village."
+  buttons:
+    ok:
+      text: "OK"
+      type: "CLOSE"
+
+# Sightseeing Purpose Screen
+sightseeing_en:
+  title: "Sightseeing Purpose"
+  text:
+    - "When sightseeing, please respect others' buildings"
+    - "and avoid destruction or theft!"
+    - ""
+    - "Type \"/spawn\" in chat to go to the lobby."
+    - "From there, you can warp to various buildings."
+    - ""
+    - "If you narrow down the genre you want to see,"
+    - "a kind guide might introduce you to recommendations!"
+  buttons:
+    genre:
+      text: "Select genre you want to see"
+      type: "LINK"
+      next: "genres_en"
+    skip:
+      text: "Of course, feel free to wander around!\nEnjoy your Oyasai sightseeing~"
+      type: "CLOSE"
+
+# Genre Selection Screen
+genres_en:
+  title: "Genre Selection"
+  text:
+    - "Will be displayed below your nametag."
+    - "※Tags will disappear after some time."
+  genres:
+    - "Japanese Style"
+    - "Chinese Architecture"
+    - "Fantasy"
+    - "Western Style"
+    - "Modern Architecture"
+    - "Sculpture"
+  buttons:
+    back:
+      text: "Back"
+      type: "LINK"
+      next: "sightseeing_en"
+    ok:
+      text: "OK"
+      type: "CLOSE"

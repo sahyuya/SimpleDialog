@@ -1,114 +1,110 @@
 package com.github.sahyuya.simpleDialog
 
-import org.bukkit.event.EventHandler
-import org.bukkit.event.Listener
-import org.bukkit.event.player.PlayerJoinEvent
-import org.bukkit.event.player.PlayerQuitEvent
-import org.bukkit.permissions.Permission
-import org.bukkit.permissions.PermissionDefault
+import com.github.sahyuya.simpleDialog.command.SimpleDialogCommand
+import com.github.sahyuya.simpleDialog.config.ConfigManager
+import com.github.sahyuya.simpleDialog.data.PlayerDataManager
+import com.github.sahyuya.simpleDialog.dialog.DialogManager
+import com.github.sahyuya.simpleDialog.form.FormManager
+import com.github.sahyuya.simpleDialog.listener.PlayerJoinListener
+import com.github.sahyuya.simpleDialog.tag.TagManager
 import org.bukkit.plugin.java.JavaPlugin
-import org.bukkit.scheduler.BukkitTask
 
-// プラグイン全体の状態を管理するメインクラス。
-class SimpleDialog : JavaPlugin(), Listener {
-    private lateinit var dialogConfig: DialogConfig
-    private lateinit var playtimeTracker: PlaytimeTracker
-    private lateinit var tagManager: TagManager
-    private lateinit var dialogManager: DialogManager
-    private var cleanupTask: BukkitTask? = null
+class SimpleDialog : JavaPlugin() {
+
+    lateinit var configManager: ConfigManager
+        private set
+
+    lateinit var playerDataManager: PlayerDataManager
+        private set
+
+    lateinit var dialogManager: DialogManager
+        private set
+
+    lateinit var formManager: FormManager
+        private set
+
+    lateinit var tagManager: TagManager
+        private set
 
     override fun onEnable() {
-        if (!dataFolder.exists()) {
-            dataFolder.mkdirs()
-        }
-        saveDefaultConfig()
-        saveResource("dialog.yml", false)
-        dialogConfig = DialogConfig(this)
-        dialogConfig.reload()
-        playtimeTracker = PlaytimeTracker(this)
-        playtimeTracker.load()
-        tagManager = TagManager(this, playtimeTracker)
-        tagManager.load()
-        dialogManager = DialogManager(dialogConfig, tagManager)
-        dialogManager.setBedrockDialogs(BedrockDialogsFactory.tryCreate(this))
+        // Initialize managers
+        configManager = ConfigManager(this)
+        playerDataManager = PlayerDataManager(this)
+        dialogManager = DialogManager(this)
+        formManager = FormManager(this)
+        tagManager = TagManager(this)
 
-        server.pluginManager.registerEvents(this, this)
-        registerPermissions()
-        registerCommands()
+        // Load configurations
+        configManager.loadConfig()
+        configManager.loadDialogs()
+        configManager.loadForms()
+        playerDataManager.loadData()
 
-        restartCleanupTask()
-        for (player in server.onlinePlayers) {
-            playtimeTracker.startSession(player, false)
-            dialogManager.handleJoin(player)
-        }
-        tagManager.applyTagsToOnlinePlayers()
+        // Register listeners
+        server.pluginManager.registerEvents(PlayerJoinListener(this), this)
+
+        // Register commands using Paper's command API
+        val commandExecutor = SimpleDialogCommand(this)
+
+        // Register the command using reflection to access CommandMap
+        server.scheduler.runTask(this, Runnable {
+            try {
+                // Create a simple command wrapper
+                val command = object : org.bukkit.command.Command(
+                    "simpledialog",
+                    "SimpleDialog main command",
+                    "/simpledialog <reload|enable|disable|cleartag|show|regenerate>",
+                    listOf("sd")
+                ) {
+                    override fun execute(
+                        sender: org.bukkit.command.CommandSender,
+                        commandLabel: String,
+                        args: Array<out String>
+                    ): Boolean {
+                        return commandExecutor.onCommand(sender, this, commandLabel, args)
+                    }
+
+                    override fun tabComplete(
+                        sender: org.bukkit.command.CommandSender,
+                        alias: String,
+                        args: Array<out String>
+                    ): List<String> {
+                        return commandExecutor.onTabComplete(sender, this, alias, args) ?: emptyList()
+                    }
+                }
+
+                command.permission = "simpledialog.admin"
+                server.commandMap.register("simpledialog", command)
+
+                logger.info("Commands registered successfully!")
+            } catch (e: Exception) {
+                logger.warning("Failed to register command: ${e.message}")
+                e.printStackTrace()
+            }
+        })
+
+        // Start tag update task
+        tagManager.startUpdateTask()
+
+        logger.info("SimpleDialog has been enabled!")
     }
 
     override fun onDisable() {
-        cleanupTask?.cancel()
-        for (player in server.onlinePlayers) {
-            playtimeTracker.stopSession(player)
-        }
+        // Save data
+        playerDataManager.saveData()
+
+        // Stop tasks
+        tagManager.stopUpdateTask()
+
+        logger.info("SimpleDialog has been disabled!")
     }
 
-    fun reloadAll(regenerateResources: Boolean) {
-        if (regenerateResources) {
-            saveResource("config.yml", true)
-            saveResource("dialog.yml", true)
-        }
-        reloadConfig()
-        dialogConfig.reload()
-        playtimeTracker.reloadSettings()
-        tagManager.reloadSettings()
-        restartCleanupTask()
-        tagManager.applyTagsToOnlinePlayers()
-    }
-
-    private fun restartCleanupTask() {
-        cleanupTask?.cancel()
-        val intervalSeconds = config.getLong("tag-check-interval-seconds", 60)
-        val ticks = intervalSeconds.coerceAtLeast(1) * 20L
-        cleanupTask = server.scheduler.runTaskTimer(this, Runnable {
-            // プレイ時間更新とタグ期限チェックを定期実行する。
-            playtimeTracker.tick()
-            tagManager.cleanupExpired()
-        }, ticks, ticks)
-    }
-
-    private fun registerPermissions() {
-        val manager = server.pluginManager
-        if (manager.getPermission(SimpleDialogCommand.PERMISSION_ADMIN) == null) {
-            manager.addPermission(
-                Permission(SimpleDialogCommand.PERMISSION_ADMIN, PermissionDefault.OP)
-            )
-        }
-    }
-
-    private fun registerCommands() {
-        val command = SimpleDialogCommand(this, dialogConfig, dialogManager, tagManager)
-        registerCommand(SimpleDialogCommand.COMMAND_NAME, "SimpleDialog commands", command)
-    }
-
-    @EventHandler
-    fun onJoin(event: PlayerJoinEvent) {
-        val player = event.player
-        val isFirstJoin = !player.hasPlayedBefore() || player.firstPlayed == 0L
-        playtimeTracker.startSession(player, isFirstJoin)
-        dialogManager.handleJoin(player)
-        tagManager.applyTagsIfActive(player)
-        if (isFirstJoin && config.getBoolean("show-dialog-on-first-join", true)) {
-            server.scheduler.runTaskLater(this, Runnable {
-                if (player.isOnline) {
-                    dialogManager.showWelcome(player)
-                }
-            }, 20L)
-        }
-    }
-
-    @EventHandler
-    fun onQuit(event: PlayerQuitEvent) {
-        val player = event.player
-        dialogManager.handleQuit(player)
-        playtimeTracker.stopSession(player)
+    fun reload() {
+        configManager.loadConfig()
+        configManager.loadDialogs()
+        configManager.loadForms()
+        playerDataManager.loadData()
+        tagManager.updateAllTags()
+        logger.info("SimpleDialog has been reloaded!")
     }
 }

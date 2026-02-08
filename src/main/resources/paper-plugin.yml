@@ -1,6 +1,14 @@
 name: SimpleDialog
-version: '1.0.0'
+version: ${version}
 main: com.github.sahyuya.simpleDialog.SimpleDialog
 api-version: '1.21'
+description: A plugin to show welcome dialogs for new players
 softdepend:
-  - floodgate
+  - GeyserMC
+  - Floodgate
+  - DynamicProfile
+
+permissions:
+  simpledialog.admin:
+    description: Allows access to admin commands
+    default: op

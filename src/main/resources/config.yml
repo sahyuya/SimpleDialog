@@ -1,5 +1,26 @@
-show-dialog-on-first-join: true
-max-playtime-hours: 3.0
-tag-duration-minutes: 60
-tag-check-interval-seconds: 60
-tag-separator: " "
+# SimpleDialog Configuration File
+
+# Show dialog on first join
+show-on-first-join: true
+
+# Tag settings
+tag:
+  # Maximum playtime to show tags (in seconds)
+  # 3 hours = 10800 seconds
+  max-playtime: 10800
+
+  # Tag display format (displayed below player name)
+  # Available placeholders: {purpose}, {genres}
+  format: "&7[&e{purpose}&7] {genres}"
+
+  # Purpose tag colors
+  purpose-colors:
+    building: "&a"
+    sightseeing: "&b"
+
+  # Genre tag color
+  genre-color: "&6"
+
+# Data cleanup
+# Remove player data when tag is cleared
+cleanup-on-tag-removal: true

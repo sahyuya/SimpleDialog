@@ -1,0 +1,112 @@
+# Dialog Configuration for Java Edition Players (Japanese)
+#
+# テキストフォーマット:
+# 色: &0-&9, &a-&f (Minecraftカラーコード)
+# 装飾: &l(太字), &o(斜体), &n(下線), &m(取り消し線), &k(難読化)
+# リセット: &r
+#
+# 例: "&a&l大きな緑の文字" → 緑色で太字
+# 例: "&c&n赤い下線付き文字" → 赤色で下線
+
+# Welcome Screen
+welcome:
+  title: "&6&lようこそ！"
+  text:
+    - "&eおやさいサーバーへようこそ！"
+    - "&7こちらは建築に特化したサーバーです。"
+    - ""
+    - "&bどのような目的でお越しになりましたか？"
+  buttons:
+    language_switch:
+      text: "&fEnglish"
+      type: "LINK"
+      next: "welcome_en"
+    building:
+      text: "&a&l建築したい！"
+      type: "LINK"
+      next: "rules"
+    sightseeing:
+      text: "&b&l軽く観光へ"
+      type: "LINK"
+      next: "rules"
+
+# Rules Screen
+rules:
+  title: "&c&lルール"
+  text:
+    - "&eまずこの鯖のルールについて"
+    - ""
+    - "&a・公序良俗に適した行動をお願いします。"
+    - "&a・資源ワールド以外での資源採取は控えて下さい。"
+    - "&a・困った時は気軽にご質問を！"
+    - ""
+    - "&7詳しくはここから先へ進んで貰える"
+    - "&6「初心者ガイドブック」&7を読んでね！"
+  buttons:
+    ok:
+      text: "&b&lOK"
+      type: "LINK"
+      # Next will be determined by previous choice (building/sightseeing)
+
+# Building Purpose Screen
+building:
+  title: "&a&l建築目的"
+  text:
+    - "&e最初はサバイバルでの建築になります。"
+    - ""
+    - "&7建材は&b資源ワールド&7か&bmenu&7のサーバーショップから"
+    - "&7入手できます。"
+    - ""
+    - "&6おすすめの建築場所は&l「はじめて村」&r&6です！"
+    - "&7色んな初心者が訪れては最初に建築を建てる街です。"
+    - ""
+    - "&a行き方: &f/spawn &7でロビーに行けます。"
+    - "&7そのまま左に進んで&eニワトリ&7が目印のゲートの"
+    - "&7ビーコンを踏むことではじめて村に行けます。"
+  buttons:
+    ok:
+      text: "&b&lOK"
+      type: "CLOSE"
+
+# Sightseeing Purpose Screen
+sightseeing:
+  title: "&b&l観光目的"
+  text:
+    - "&c観光する際は他人の建築に敬意を持ち、"
+    - "&c破壊・窃盗をしないように！"
+    - ""
+    - "&a行き方: &f/spawn &7でロビーに行けます。"
+    - "&7そこから様々な建築へワープできます。"
+    - ""
+    - "&e見たいジャンルを絞って頂ければ"
+    - "&e優しい案内人がおすすめを紹介してくれるかもしれません！"
+  buttons:
+    genre:
+      text: "&d&l見たいジャンルを選ぶ"
+      type: "LINK"
+      next: "genres"
+    skip:
+      text: "&7勿論フラフラと気になるところを見回っても大丈夫です。\n&bおやさい観光お楽しみ下さい～"
+      type: "CLOSE"
+
+# Genre Selection Screen
+genres:
+  title: "&d&l見たいジャンル"
+  text:
+    - "&eネームタグの下に表示されます。"
+    - "&c※タグは時間が経つと消えます。"
+  genres:
+    - "&c和風"
+    - "&6中華建築"
+    - "&d&lファンタジー"
+    - "&e洋風"
+    - "&b現代建築"
+    - "&a造形"
+  buttons:
+    back:
+      text: "&7戻る"
+      type: "LINK"
+      next: "sightseeing"
+    ok:
+      text: "&b&lOK"
+      type: "CLOSE"
