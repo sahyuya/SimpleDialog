@@ -5,9 +5,9 @@ show-on-first-join: true
 
 # Tag settings
 tag:
-  # Maximum playtime to show tags (in seconds)
-  # 3 hours = 10800 seconds
-  max-playtime: 10800
+  # Maximum playtime to show tags (in minutes, matching DynamicProfile)
+  # 3 hours = 180 minutes
+  max-playtime: 180
 
   # Tag display format (displayed below player name)
   # Available placeholders: {purpose}, {genres}

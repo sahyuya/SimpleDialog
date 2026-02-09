@@ -22,11 +22,8 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.8-R0.1-SNAPSHOT")
-    compileOnly("org.geysermc.floodgate:api:2.2.2-SNAPSHOT")
     compileOnly("org.geysermc.cumulus:cumulus:1.1.2")
-    compileOnly("net.kyori:adventure-text-minimessage:4.24.0")
-    compileOnly("net.kyori:adventure-text-serializer-legacy:4.24.0")
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+    compileOnly("org.geysermc.geyser:api:2.4.2-SNAPSHOT")
     implementation(kotlin("stdlib"))
     implementation("com.google.code.gson:gson:2.10.1")
 }

@@ -46,7 +46,7 @@ class ConfigManager(private val plugin: SimpleDialog) {
 
         val config = plugin.config
         showOnFirstJoin = config.getBoolean("show-on-first-join", true)
-        maxPlaytime = config.getLong("tag.max-playtime", 10800L)
+        maxPlaytime = config.getLong("tag.max-playtime", 180L) // minutes
         tagFormat = config.getString("tag.format") ?: "&7[&e{purpose}&7] {genres}"
         buildingColor = config.getString("tag.purpose-colors.building") ?: "&a"
         sightseeingColor = config.getString("tag.purpose-colors.sightseeing") ?: "&b"

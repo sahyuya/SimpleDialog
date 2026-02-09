@@ -1,118 +1,117 @@
-# Forms Configuration for Bedrock Edition Players (Japanese)
+# Forms Configuration for Bedrock Edition Players (English)
 
 # Welcome Screen
-welcome:
+welcome_en:
   type: "SIMPLE_FORM"
-  title: "ようこそ！"
-  content: "おやさいサーバーへようこそ！\nこちらは建築に特化したサーバーです。\n\nどのような目的でお越しになりましたか？"
+  title: "Welcome!"
+  content: "Welcome to Oyasai Server!\nThis is a building-focused server.\n\nWhat is your purpose for visiting?"
   buttons:
     - text: "日本語 / English"
       action: "SWITCH_LANGUAGE"
-      next: "welcome_en"
-    - text: "建築したい！"
+      next: "welcome"
+    - text: "I want to build!"
       action: "SELECT_PURPOSE"
       purpose: "building"
-      next: "rules"
-    - text: "軽く観光へ"
+      next: "rules_en"
+    - text: "Sightseeing"
       action: "SELECT_PURPOSE"
       purpose: "sightseeing"
-      next: "rules"
+      next: "rules_en"
 
 # Rules Screen
-rules:
+rules_en:
   type: "SIMPLE_FORM"
-  title: "ルール"
+  title: "Rules"
   content: |
-    まずこの鯖のルールについて
+    First, about our server rules:
     
-    ・公序良俗に適した行動をお願いします。
-    ・資源ワールド以外での資源採取は控えて下さい。
-    ・困った時は気軽にご質問を！
+    ・Please act in accordance with public morals.
+    ・Please refrain from resource gathering outside the resource world.
+    ・Feel free to ask questions when in trouble!
     
-    詳しくはここから先へ進んで貰える
-    「初心者ガイドブック」を読んでね！
+    For more details, please read the
+    "Beginner's Guidebook" you'll receive!
   buttons:
     - text: "OK"
       action: "NEXT"
-      # Next determined by purpose
 
 # Building Purpose Screen
-building:
+building_en:
   type: "SIMPLE_FORM"
-  title: "建築目的"
+  title: "Building Purpose"
   content: |
-    最初はサバイバルでの建築になります。
+    You'll start with survival building.
     
-    建材は資源ワールドかmenuのサーバーショップから
-    入手できます。
+    Materials can be obtained from the resource world
+    or the server shop in the menu.
     
-    おすすめの建築場所は「はじめて村」です！
-    色んな初心者が訪れては最初に建築を建てる街です。
+    The recommended building location is "Hajimete Village"!
+    It's a town where many beginners build their first structures.
     
-    行き方は「/spawn」とチャットに打つとロビーに行けます。
-    そのまま左に進んでニワトリが目印のゲートの
-    ビーコンを踏むことではじめて村に行けます。
+    To get there, type "/spawn" in chat to go to the lobby.
+    Then go left and step on the beacon at the gate
+    marked with a chicken to reach Hajimete Village.
   buttons:
     - text: "OK"
       action: "CLOSE"
 
 # Sightseeing Purpose Screen
-sightseeing:
+sightseeing_en:
   type: "SIMPLE_FORM"
-  title: "観光目的"
+  title: "Sightseeing Purpose"
   content: |
-    観光する際は他人の建築に敬意を持ち、
-    破壊・窃盗をしないように！
+    When sightseeing, please respect others' buildings
+    and avoid destruction or theft!
     
-    「/spawn」とチャットに打つとロビーに行けます。
-    そこから様々な建築へワープできます。
+    Type "/spawn" in chat to go to the lobby.
+    From there, you can warp to various buildings.
     
-    見たいジャンルを絞って頂ければ
-    優しい案内人がおすすめを紹介してくれるかもしれません！
+    If you narrow down the genre you want to see,
+    a kind guide might introduce you to recommendations!
     
-    勿論フラフラと気になるところを見回っても大丈夫です。
-    おやさい観光お楽しみ下さい～
+    Of course, feel free to wander around!
+    Enjoy your Oyasai sightseeing~
   buttons:
-    - text: "見たいジャンルを選ぶ"
+    - text: "Select genre you want to see"
       action: "NEXT"
-      next: "genres"
+      next: "genres_en"
     - text: "OK"
       action: "CLOSE"
 
 # Genre Selection Screen
-genres:
+genres_en:
   type: "CUSTOM_FORM"
-  title: "見たいジャンル"
+  title: "Genre Selection"
   content:
     - type: "LABEL"
-      text: "ネームタグの下に表示されます。\n※タグは時間が経つと消えます。"
+      text: "Will be displayed below your nametag.\n※Tags will disappear after some time."
     - type: "TOGGLE"
-      text: "#和風"
-      genre: "和風"
+      text: "#Japanese Style"
+      genre: "Japanese Style"
       default: false
     - type: "TOGGLE"
-      text: "#中華建築"
-      genre: "中華建築"
+      text: "#Chinese Architecture"
+      genre: "Chinese Architecture"
       default: false
     - type: "TOGGLE"
-      text: "#ファンタジー"
-      genre: "ファンタジー"
+      text: "#Fantasy"
+      genre: "Fantasy"
       default: false
     - type: "TOGGLE"
-      text: "#洋風"
-      genre: "洋風"
+      text: "#Western Style"
+      genre: "Western Style"
       default: false
     - type: "TOGGLE"
-      text: "#現代建築"
-      genre: "現代建築"
+      text: "#Modern Architecture"
+      genre: "Modern Architecture"
       default: false
     - type: "TOGGLE"
-      text: "#造形"
-      genre: "造形"
+      text: "#Sculpture"
+      genre: "Sculpture"
       default: false
   buttons:
-    - text: "戻る"
+    - text: "Back"
       action: "BACK"
-      next: "sightseeing"
-    - text: "決定"
+      next: "sightseeing_en"
+    - text: "Submit"
       action: "SUBMIT"

@@ -5,8 +5,7 @@ import org.bukkit.entity.Player
 import org.bukkit.configuration.ConfigurationSection
 import org.geysermc.cumulus.form.SimpleForm
 import org.geysermc.cumulus.form.CustomForm
-import org.geysermc.cumulus.util.FormBuilder
-import org.geysermc.floodgate.api.FloodgateApi
+import org.geysermc.geyser.api.GeyserApi
 
 class FormManager(private val plugin: SimpleDialog) {
 
@@ -18,10 +17,16 @@ class FormManager(private val plugin: SimpleDialog) {
 
     private val sessions = mutableMapOf<Player, FormSession>()
 
+    private val isGeyserEnabled: Boolean = plugin.server.pluginManager.getPlugin("Geyser-Spigot") != null
+
     private fun isBedrockPlayer(player: Player): Boolean {
+        if (!isGeyserEnabled) return false
+
         return try {
-            FloodgateApi.getInstance().isFloodgatePlayer(player.uniqueId)
+            val geyserApi = GeyserApi.api()
+            geyserApi.isBedrockPlayer(player.uniqueId)
         } catch (e: Exception) {
+            plugin.logger.warning("Error checking if player is Bedrock: ${e.message}")
             false
         }
     }
@@ -84,7 +89,7 @@ class FormManager(private val plugin: SimpleDialog) {
             closeForm(player)
         })
 
-        FloodgateApi.getInstance().sendForm(player.uniqueId, form.build())
+        sendForm(player, form.build())
     }
 
     private fun showCustomForm(player: Player, screen: ConfigurationSection, session: FormSession, screenId: String) {
@@ -143,7 +148,24 @@ class FormManager(private val plugin: SimpleDialog) {
             closeForm(player)
         })
 
-        FloodgateApi.getInstance().sendForm(player.uniqueId, form.build())
+        sendForm(player, form.build())
+    }
+
+    private fun sendForm(player: Player, form: org.geysermc.cumulus.form.Form) {
+        try {
+            val geyserApi = GeyserApi.api()
+            val connection = geyserApi.connectionByUuid(player.uniqueId)
+
+            if (connection == null) {
+                plugin.logger.warning("Could not find Geyser connection for ${player.name}")
+                return
+            }
+
+            connection.sendForm(form)
+        } catch (e: Exception) {
+            plugin.logger.warning("Error sending form to ${player.name}: ${e.message}")
+            e.printStackTrace()
+        }
     }
 
     private fun handleButtonAction(player: Player, buttonData: Map<String, Any>, session: FormSession) {
@@ -161,7 +183,7 @@ class FormManager(private val plugin: SimpleDialog) {
                     session.selectedPurpose = it
                     plugin.playerDataManager.setPurpose(player.uniqueId, it)
                 }
-                next?.let { showForm(player, it) }
+                next?.let { showForm(player, it) } ?: determineNextScreen(session)?.let { showForm(player, it) }
             }
             "NEXT" -> {
                 val nextScreen = next ?: determineNextScreen(session)

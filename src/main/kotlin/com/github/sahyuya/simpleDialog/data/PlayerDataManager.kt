@@ -13,7 +13,7 @@ class DynamicProfileReader(private val plugin: SimpleDialog) {
     private val dynamicProfileDir = File(plugin.dataFolder.parentFile, "DynamicProfile/UserStatsJSON")
 
     /**
-     * Get player's total playtime in seconds from DynamicProfile
+     * Get player's total playtime in minutes from DynamicProfile
      * Returns null if player data doesn't exist
      */
     fun getPlaytime(uuid: UUID): Long? {
@@ -27,10 +27,7 @@ class DynamicProfileReader(private val plugin: SimpleDialog) {
             val jsonObject = JsonParser.parseString(jsonContent).asJsonObject
 
             // playTime is stored in minutes in DynamicProfile
-            val playTimeMinutes = jsonObject.get("playTime")?.asLong ?: return null
-
-            // Convert minutes to seconds
-            playTimeMinutes * 60
+            jsonObject.get("playTime")?.asLong
         } catch (e: Exception) {
             plugin.logger.warning("Failed to read DynamicProfile data for $uuid: ${e.message}")
             null
@@ -48,9 +45,9 @@ class DynamicProfileReader(private val plugin: SimpleDialog) {
     /**
      * Check if player has exceeded max playtime
      */
-    fun hasExceededMaxPlaytime(uuid: UUID, maxPlaytimeSeconds: Long): Boolean {
+    fun hasExceededMaxPlaytime(uuid: UUID, maxPlaytimeMinutes: Long): Boolean {
         val playtime = getPlaytime(uuid) ?: return false
-        return playtime > maxPlaytimeSeconds
+        return playtime > maxPlaytimeMinutes
     }
 }
 

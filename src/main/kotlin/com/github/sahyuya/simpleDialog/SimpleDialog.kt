@@ -6,6 +6,7 @@ import com.github.sahyuya.simpleDialog.data.PlayerDataManager
 import com.github.sahyuya.simpleDialog.dialog.DialogManager
 import com.github.sahyuya.simpleDialog.form.FormManager
 import com.github.sahyuya.simpleDialog.listener.PlayerJoinListener
+import com.github.sahyuya.simpleDialog.listener.DialogClickListener
 import com.github.sahyuya.simpleDialog.tag.TagManager
 import org.bukkit.plugin.java.JavaPlugin
 
@@ -42,6 +43,7 @@ class SimpleDialog : JavaPlugin() {
 
         // Register listeners
         server.pluginManager.registerEvents(PlayerJoinListener(this), this)
+        server.pluginManager.registerEvents(DialogClickListener(this), this)
 
         // Register commands using Paper's command API
         val commandExecutor = SimpleDialogCommand(this)

@@ -103,11 +103,12 @@ class SimpleDialogCommand(private val plugin: SimpleDialog) : CommandExecutor, T
 
                 // Check if player is Bedrock safely
                 val isBedrockPlayer = try {
-                    val floodgateClass = Class.forName("org.geysermc.floodgate.api.FloodgateApi")
-                    val getInstance = floodgateClass.getMethod("getInstance")
-                    val api = getInstance.invoke(null)
-                    val isFloodgatePlayer = api.javaClass.getMethod("isFloodgatePlayer", java.util.UUID::class.java)
-                    isFloodgatePlayer.invoke(api, targetPlayer.uniqueId) as Boolean
+                    if (plugin.server.pluginManager.getPlugin("Geyser-Spigot") != null) {
+                        val geyserApi = org.geysermc.geyser.api.GeyserApi.api()
+                        geyserApi.isBedrockPlayer(targetPlayer.uniqueId)
+                    } else {
+                        false
+                    }
                 } catch (e: Exception) {
                     false
                 }
