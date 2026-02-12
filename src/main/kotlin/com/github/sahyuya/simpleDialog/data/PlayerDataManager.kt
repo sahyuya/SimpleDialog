@@ -121,6 +121,10 @@ class PlayerDataManager(private val plugin: SimpleDialog) {
         data.genres.addAll(genres)
     }
 
+    fun getGenres(uuid: UUID): List<String>? {
+        return playerData[uuid]?.genres
+    }
+
     fun clearTags(uuid: UUID) {
         val data = playerData[uuid] ?: return
         data.purpose = null

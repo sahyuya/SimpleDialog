@@ -5,7 +5,6 @@ import org.bukkit.entity.Player
 import org.bukkit.configuration.ConfigurationSection
 import org.geysermc.cumulus.form.SimpleForm
 import org.geysermc.cumulus.form.CustomForm
-import org.geysermc.geyser.api.GeyserApi
 
 class FormManager(private val plugin: SimpleDialog) {
 
@@ -23,8 +22,11 @@ class FormManager(private val plugin: SimpleDialog) {
         if (!isGeyserEnabled) return false
 
         return try {
-            val geyserApi = GeyserApi.api()
-            geyserApi.isBedrockPlayer(player.uniqueId)
+            val geyserApiClass = Class.forName("org.geysermc.geyser.api.GeyserApi")
+            val apiMethod = geyserApiClass.getMethod("api")
+            val apiInstance = apiMethod.invoke(null)
+            val isBedrockMethod = apiInstance.javaClass.getMethod("isBedrockPlayer", java.util.UUID::class.java)
+            isBedrockMethod.invoke(apiInstance, player.uniqueId) as Boolean
         } catch (e: Exception) {
             plugin.logger.warning("Error checking if player is Bedrock: ${e.message}")
             false
@@ -153,15 +155,19 @@ class FormManager(private val plugin: SimpleDialog) {
 
     private fun sendForm(player: Player, form: org.geysermc.cumulus.form.Form) {
         try {
-            val geyserApi = GeyserApi.api()
-            val connection = geyserApi.connectionByUuid(player.uniqueId)
+            val geyserApiClass = Class.forName("org.geysermc.geyser.api.GeyserApi")
+            val apiMethod = geyserApiClass.getMethod("api")
+            val apiInstance = apiMethod.invoke(null)
+            val connectionMethod = apiInstance.javaClass.getMethod("connectionByUuid", java.util.UUID::class.java)
+            val connection = connectionMethod.invoke(apiInstance, player.uniqueId)
 
             if (connection == null) {
                 plugin.logger.warning("Could not find Geyser connection for ${player.name}")
                 return
             }
 
-            connection.sendForm(form)
+            val sendFormMethod = connection.javaClass.getMethod("sendForm", Class.forName("org.geysermc.cumulus.form.Form"))
+            sendFormMethod.invoke(connection, form)
         } catch (e: Exception) {
             plugin.logger.warning("Error sending form to ${player.name}: ${e.message}")
             e.printStackTrace()

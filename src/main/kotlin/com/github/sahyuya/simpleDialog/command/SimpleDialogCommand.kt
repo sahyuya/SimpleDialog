@@ -101,15 +101,19 @@ class SimpleDialogCommand(private val plugin: SimpleDialog) : CommandExecutor, T
                     }
                 }
 
-                // Check if player is Bedrock safely
+                // Check if player is Bedrock safely using reflection
                 val isBedrockPlayer = try {
                     if (plugin.server.pluginManager.getPlugin("Geyser-Spigot") != null) {
-                        val geyserApi = org.geysermc.geyser.api.GeyserApi.api()
-                        geyserApi.isBedrockPlayer(targetPlayer.uniqueId)
+                        val geyserApiClass = Class.forName("org.geysermc.geyser.api.GeyserApi")
+                        val apiMethod = geyserApiClass.getMethod("api")
+                        val apiInstance = apiMethod.invoke(null)
+                        val isBedrockMethod = apiInstance.javaClass.getMethod("isBedrockPlayer", java.util.UUID::class.java)
+                        isBedrockMethod.invoke(apiInstance, targetPlayer.uniqueId) as Boolean
                     } else {
                         false
                     }
                 } catch (e: Exception) {
+                    plugin.logger.warning("Error checking if player is Bedrock: ${e.message}")
                     false
                 }
 

@@ -39,12 +39,17 @@ class PlayerJoinListener(private val plugin: SimpleDialog) : Listener {
         // Check if player is Bedrock or Java safely
         val isBedrockPlayer = try {
             if (plugin.server.pluginManager.getPlugin("Geyser-Spigot") != null) {
-                val geyserApi = org.geysermc.geyser.api.GeyserApi.api()
-                geyserApi.isBedrockPlayer(player.uniqueId)
+                // Use reflection to avoid ClassNotFoundException
+                val geyserApiClass = Class.forName("org.geysermc.geyser.api.GeyserApi")
+                val apiMethod = geyserApiClass.getMethod("api")
+                val apiInstance = apiMethod.invoke(null)
+                val isBedrockMethod = apiInstance.javaClass.getMethod("isBedrockPlayer", java.util.UUID::class.java)
+                isBedrockMethod.invoke(apiInstance, player.uniqueId) as Boolean
             } else {
                 false
             }
         } catch (e: Exception) {
+            plugin.logger.warning("Error checking if player is Bedrock: ${e.message}")
             false
         }
 

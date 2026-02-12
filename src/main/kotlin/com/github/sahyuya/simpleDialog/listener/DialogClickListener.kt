@@ -20,10 +20,10 @@ class DialogClickListener(private val plugin: SimpleDialog) : Listener {
 
         val player = getPlayerFromEvent(event) ?: return
 
-        plugin.logger.info("Dialog action received: ${identifier.value()} from ${player.name}")
+        plugin.logger.info("Dialog click: ${identifier.value()} from ${player.name}")
 
-        // Handle the action in DialogManager
-        plugin.dialogManager.handleDialogAction(player, identifier)
+        // Always pass both identifier and responseView to DialogManager
+        plugin.dialogManager.handleDialogAction(player, identifier, event.dialogResponseView)
     }
 
     private fun getPlayerFromEvent(event: PlayerCustomClickEvent): Player? {

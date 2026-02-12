@@ -2,9 +2,11 @@ package com.github.sahyuya.simpleDialog.dialog
 
 import com.github.sahyuya.simpleDialog.SimpleDialog
 import io.papermc.paper.dialog.Dialog
+import io.papermc.paper.dialog.DialogResponseView
 import io.papermc.paper.registry.data.dialog.ActionButton
 import io.papermc.paper.registry.data.dialog.DialogBase
 import io.papermc.paper.registry.data.dialog.body.DialogBody
+import io.papermc.paper.registry.data.dialog.input.DialogInput
 import io.papermc.paper.registry.data.dialog.type.DialogType
 import io.papermc.paper.registry.data.dialog.action.DialogAction
 import net.kyori.adventure.key.Key
@@ -20,15 +22,14 @@ class DialogManager(private val plugin: SimpleDialog) {
     private data class DialogSession(
         var currentScreen: String,
         var language: String,
-        var selectedPurpose: String?,
-        val selectedGenres: MutableList<String>
+        var selectedPurpose: String?
     )
 
     private val sessions = mutableMapOf<UUID, DialogSession>()
     private val legacySerializer = LegacyComponentSerializer.legacyAmpersand()
 
     fun showWelcomeDialog(player: Player) {
-        val session = DialogSession("welcome", "ja", null, mutableListOf())
+        val session = DialogSession("welcome", "ja", null)
         sessions[player.uniqueId] = session
         showDialog(player, "welcome")
     }
@@ -45,12 +46,6 @@ class DialogManager(private val plugin: SimpleDialog) {
 
         val screen = config.getConfigurationSection(screenId) ?: return
 
-        // Special handling for genres screen
-        if (screenId == "genres" || screenId == "genres_en") {
-            showGenresDialog(player, screen, session)
-            return
-        }
-
         val dialog = createDialog(player, screen, session, screenId)
         player.showDialog(dialog)
     }
@@ -58,192 +53,194 @@ class DialogManager(private val plugin: SimpleDialog) {
     private fun createDialog(player: Player, screen: ConfigurationSection, session: DialogSession, screenId: String): Dialog {
         return Dialog.create { factory ->
             factory.empty()
-                .base(createDialogBase(screen))
-                .type(createDialogType(player, screen, session, screenId))
+                .base(createDialogBase(screen, screenId))
+                .type(createDialogType(screen, screenId))
         }
     }
 
-    private fun createDialogBase(screen: ConfigurationSection): DialogBase {
+    private fun createDialogBase(screen: ConfigurationSection, screenId: String): DialogBase {
         val title = screen.getString("title") ?: "Dialog"
-        val textList = screen.getStringList("text")
+        val sections = screen.getList("sections") as? List<Map<String, Any>> ?: emptyList()
 
         val titleComponent = legacySerializer.deserialize(title)
         val bodyComponents = mutableListOf<DialogBody>()
+        val inputs = mutableListOf<DialogInput>()
 
-        // Add text lines as body
-        textList.forEach { line ->
-            bodyComponents.add(DialogBody.plainMessage(legacySerializer.deserialize(line)))
+        // Get current session to check for selected genres
+        val session = sessions.values.firstOrNull { it.currentScreen == screenId }
+
+        // Process sections in order
+        sections.forEach { section ->
+            val type = section["type"] as? String ?: return@forEach
+
+            when (type) {
+                "text" -> {
+                    val lines = section["lines"] as? List<String> ?: return@forEach
+                    lines.forEach { line ->
+                        bodyComponents.add(
+                            DialogBody.plainMessage(
+                                legacySerializer.deserialize(line)
+                                    .decoration(TextDecoration.ITALIC, false)
+                            )
+                        )
+                    }
+                }
+                "checkboxes" -> {
+                    val items = section["items"] as? List<Map<String, Any>> ?: return@forEach
+                    items.forEach { item ->
+                        val key = item["key"] as? String ?: return@forEach
+                        val text = item["text"] as? String ?: return@forEach
+                        val genre = item["genre"] as? String ?: ""
+
+                        // Check if this genre is already selected
+                        val isSelected = session?.let { sess ->
+                            // Get current genres from player data
+                            val uuid = sessions.entries.find { it.value == sess }?.key
+                            uuid?.let { plugin.playerDataManager.getGenres(it)?.contains(genre) } ?: false
+                        } ?: false
+
+                        val displayText = if (isSelected) {
+                            "&a✓ $text"
+                        } else {
+                            text
+                        }
+
+                        val label = legacySerializer.deserialize(displayText)
+                            .decoration(TextDecoration.ITALIC, false)
+
+                        val input = DialogInput.bool(key, label)
+                            .initial(isSelected)
+                            .build()
+
+                        inputs.add(input)
+                    }
+                }
+            }
         }
 
-        return DialogBase.builder(titleComponent)
+        val builder = DialogBase.builder(titleComponent)
             .canCloseWithEscape(true)
             .body(bodyComponents)
-            .build()
-    }
 
-    private fun createDialogType(player: Player, screen: ConfigurationSection, session: DialogSession, screenId: String): DialogType {
-        val buttonsSection = screen.getConfigurationSection("buttons")
-
-        // If no buttons, create empty multi-action
-        if (buttonsSection == null) {
-            return DialogType.multiAction(emptyList()).build()
+        if (inputs.isNotEmpty()) {
+            builder.inputs(inputs)
         }
 
+        return builder.build()
+    }
+
+    private fun createDialogType(screen: ConfigurationSection, screenId: String): DialogType {
+        val sections = screen.getList("sections") as? List<Map<String, Any>> ?: emptyList()
         val actionButtons = mutableListOf<ActionButton>()
 
-        for (buttonKey in buttonsSection.getKeys(false)) {
-            val button = buttonsSection.getConfigurationSection(buttonKey) ?: continue
-            val text = button.getString("text") ?: continue
-            val buttonComponent = legacySerializer.deserialize(text).decoration(TextDecoration.ITALIC, false)
+        // Process sections and collect buttons
+        sections.forEach { section ->
+            val type = section["type"] as? String ?: return@forEach
 
-            val actionKey = Key.key("simpledialog", "${screenId}_${buttonKey}")
-            val action = DialogAction.customClick(actionKey, null)
+            if (type == "buttons") {
+                val items = section["items"] as? List<Map<String, Any>> ?: return@forEach
+                items.forEach { item ->
+                    val key = item["key"] as? String ?: return@forEach
+                    val text = item["text"] as? String ?: return@forEach
 
-            val actionButton = ActionButton.builder(buttonComponent)
-                .action(action)
-                .width(200)
-                .build()
+                    val buttonText = legacySerializer.deserialize(text)
+                        .decoration(TextDecoration.ITALIC, false)
 
-            actionButtons.add(actionButton)
+                    val actionKey = Key.key("simpledialog", "${screenId}_${key}")
+                    val action = DialogAction.customClick(actionKey, null)
+
+                    val button = ActionButton.builder(buttonText)
+                        .action(action)
+                        .width(200)
+                        .build()
+
+                    actionButtons.add(button)
+                }
+            }
         }
 
         return DialogType.multiAction(actionButtons).build()
     }
 
-    private fun showGenresDialog(player: Player, screen: ConfigurationSection, session: DialogSession) {
-        // For genres, we'll show a simple multi-action dialog
-        // Players will click genre buttons to toggle selection
-        val title = screen.getString("title") ?: "Genre Selection"
-        val textList = screen.getStringList("text")
-        val genres = screen.getStringList("genres")
-
-        val titleComponent = legacySerializer.deserialize(title)
-        val bodyComponents = mutableListOf<DialogBody>()
-
-        // Add instruction text
-        textList.forEach { line ->
-            bodyComponents.add(DialogBody.plainMessage(legacySerializer.deserialize(line)))
-        }
-
-        // Add currently selected genres
-        if (session.selectedGenres.isNotEmpty()) {
-            bodyComponents.add(DialogBody.plainMessage(Component.empty()))
-            bodyComponents.add(DialogBody.plainMessage(
-                legacySerializer.deserialize("&a選択中: ${session.selectedGenres.joinToString(", ")}")
-            ))
-        }
-
-        val actionButtons = mutableListOf<ActionButton>()
-
-        // Add genre toggle buttons
-        genres.forEach { genre ->
-            val cleanGenre = genre.replace("&[0-9a-fk-or]".toRegex(), "").trim()
-            val isSelected = session.selectedGenres.contains(cleanGenre)
-            val prefix = if (isSelected) "&a✓ " else "&7"
-            val buttonText = legacySerializer.deserialize("$prefix$genre")
-                .decoration(TextDecoration.ITALIC, false)
-
-            val actionKey = Key.key("simpledialog", "genre_toggle_${cleanGenre.replace(" ", "_")}")
-            val action = DialogAction.customClick(actionKey, null)
-
-            actionButtons.add(
-                ActionButton.builder(buttonText)
-                    .action(action)
-                    .width(200)
-                    .build()
-            )
-        }
-
-        // Add control buttons
-        val buttonsSection = screen.getConfigurationSection("buttons")
-        buttonsSection?.let { buttons ->
-            actionButtons.add(
-                ActionButton.builder(Component.empty())
-                    .action(null)
-                    .width(200)
-                    .build()
-            )
-
-            for (buttonKey in buttons.getKeys(false)) {
-                val button = buttons.getConfigurationSection(buttonKey) ?: continue
-                val text = button.getString("text") ?: continue
-                val buttonComponent = legacySerializer.deserialize(text)
-                    .decoration(TextDecoration.ITALIC, false)
-
-                val actionKey = Key.key("simpledialog", "genres_${buttonKey}")
-                val action = DialogAction.customClick(actionKey, null)
-
-                actionButtons.add(
-                    ActionButton.builder(buttonComponent)
-                        .action(action)
-                        .width(200)
-                        .build()
-                )
-            }
-        }
-
-        val dialog = Dialog.create { factory ->
-            factory.empty()
-                .base(
-                    DialogBase.builder(titleComponent)
-                        .canCloseWithEscape(true)
-                        .body(bodyComponents)
-                        .build()
-                )
-                .type(DialogType.multiAction(actionButtons).build())
-        }
-
-        player.showDialog(dialog)
-    }
-
-    fun handleDialogAction(player: Player, actionKey: Key) {
+    fun handleDialogAction(player: Player, actionKey: Key, responseView: DialogResponseView?) {
         val session = sessions[player.uniqueId] ?: return
         val currentScreen = session.currentScreen
 
         val keyString = actionKey.value()
-        plugin.logger.info("Dialog action: $keyString for player ${player.name} on screen $currentScreen")
+        plugin.logger.info("Handling dialog action: $keyString")
 
-        // Parse action
-        val parts = keyString.split("_")
-        if (parts.isEmpty()) return
-
-        when {
-            // Genre toggle
-            keyString.startsWith("genre_toggle_") -> {
-                val genreName = keyString.removePrefix("genre_toggle_").replace("_", " ")
-                toggleGenre(session, genreName)
-                showDialog(player, currentScreen) // Refresh dialog
-            }
-
-            // Genres control buttons
-            keyString.startsWith("genres_") -> {
-                val buttonKey = keyString.removePrefix("genres_")
-                when (buttonKey) {
-                    "back" -> {
-                        goBack(player, session)
-                    }
-                    "ok" -> {
-                        saveGenresAndClose(player, session)
-                    }
-                }
-            }
-
-            // Regular screen buttons
-            else -> {
-                handleScreenButton(player, session, currentScreen, parts.lastOrNull() ?: "")
-            }
+        // Save checkboxes first if responseView exists (before changing screen)
+        if (responseView != null) {
+            saveCheckboxes(player, session, currentScreen, responseView)
         }
-    }
 
-    private fun toggleGenre(session: DialogSession, genreName: String) {
-        if (session.selectedGenres.contains(genreName)) {
-            session.selectedGenres.remove(genreName)
+        val config = if (session.language == "ja") {
+            plugin.configManager.dialogsJa
         } else {
-            session.selectedGenres.add(genreName)
+            plugin.configManager.dialogsEn
+        }
+
+        val screen = config.getConfigurationSection(currentScreen) ?: return
+        val sections = screen.getList("sections") as? List<Map<String, Any>> ?: emptyList()
+
+        // Extract button key from action key (format: "screenId_buttonKey")
+        val buttonKey = keyString.substringAfter("${currentScreen}_")
+        plugin.logger.info("Button key: $buttonKey")
+
+        // Find the button in sections
+        var buttonData: Map<String, Any>? = null
+        for (section in sections) {
+            val type = section["type"] as? String ?: continue
+            if (type == "buttons") {
+                val items = section["items"] as? List<Map<String, Any>> ?: continue
+                buttonData = items.find { (it["key"] as? String) == buttonKey }
+                if (buttonData != null) break
+            }
+        }
+
+        if (buttonData == null) {
+            plugin.logger.warning("Button not found: $buttonKey in screen: $currentScreen")
+            return
+        }
+
+        val action = buttonData["action"] as? String ?: "close"
+        plugin.logger.info("Button action: $action")
+
+        when (action) {
+            "switch_language" -> {
+                session.language = if (session.language == "ja") "en" else "ja"
+                val nextScreen = if (session.language == "ja") "welcome" else "welcome_en"
+                showDialog(player, nextScreen)
+            }
+            "select_purpose" -> {
+                val purpose = buttonData["purpose"] as? String
+                val next = buttonData["next"] as? String
+
+                purpose?.let {
+                    session.selectedPurpose = it
+                    plugin.playerDataManager.setPurpose(player.uniqueId, it)
+                }
+
+                next?.let { showDialog(player, it) } ?: closeDialog(player)
+            }
+            "next" -> {
+                determineNextScreen(player, session)
+            }
+            "goto" -> {
+                val next = buttonData["next"] as? String
+                next?.let { showDialog(player, it) } ?: closeDialog(player)
+            }
+            "close" -> {
+                closeDialog(player)
+            }
+            "back" -> {
+                val next = buttonData["next"] as? String
+                next?.let { showDialog(player, it) } ?: closeDialog(player)
+            }
         }
     }
 
-    private fun handleScreenButton(player: Player, session: DialogSession, screenId: String, buttonKey: String) {
+    private fun saveCheckboxes(player: Player, session: DialogSession, screenId: String, responseView: DialogResponseView) {
         val config = if (session.language == "ja") {
             plugin.configManager.dialogsJa
         } else {
@@ -251,51 +248,33 @@ class DialogManager(private val plugin: SimpleDialog) {
         }
 
         val screen = config.getConfigurationSection(screenId) ?: return
-        val buttonsSection = screen.getConfigurationSection("buttons") ?: return
-        val button = buttonsSection.getConfigurationSection(buttonKey) ?: return
+        val sections = screen.getList("sections") as? List<Map<String, Any>> ?: emptyList()
 
-        val next = button.getString("next")
+        val selectedGenres = mutableListOf<String>()
 
-        when (buttonKey) {
-            "language_switch", "languageswitch" -> {
-                session.language = if (session.language == "ja") "en" else "ja"
-                val nextScreen = if (session.language == "ja") "welcome" else "welcome_en"
-                showDialog(player, nextScreen)
+        // Find checkboxes section
+        for (section in sections) {
+            val type = section["type"] as? String ?: continue
+            if (type == "checkboxes") {
+                val items = section["items"] as? List<Map<String, Any>> ?: continue
+                items.forEach { item ->
+                    val key = item["key"] as? String ?: return@forEach
+                    val genre = item["genre"] as? String ?: return@forEach
+
+                    val isChecked = responseView.getBoolean(key) ?: false
+                    if (isChecked) {
+                        selectedGenres.add(genre)
+                    }
+                }
             }
-            "building" -> {
-                session.selectedPurpose = "building"
-                plugin.playerDataManager.setPurpose(player.uniqueId, "building")
-                next?.let { showDialog(player, it) } ?: determineNextFromRules(player, session)
-            }
-            "sightseeing" -> {
-                session.selectedPurpose = "sightseeing"
-                plugin.playerDataManager.setPurpose(player.uniqueId, "sightseeing")
-                next?.let { showDialog(player, it) } ?: determineNextFromRules(player, session)
-            }
-            "ok" -> {
-                handleOkButton(player, session, next)
-            }
-            "genre" -> {
-                next?.let { showDialog(player, it) }
-            }
-            "skip" -> {
-                closeDialog(player)
-            }
-            "back" -> {
-                next?.let { showDialog(player, it) }
-            }
+        }
+
+        if (selectedGenres.isNotEmpty()) {
+            plugin.playerDataManager.setGenres(player.uniqueId, selectedGenres)
         }
     }
 
-    private fun handleOkButton(player: Player, session: DialogSession, next: String?) {
-        if (next != null) {
-            showDialog(player, next)
-        } else {
-            determineNextFromRules(player, session)
-        }
-    }
-
-    private fun determineNextFromRules(player: Player, session: DialogSession) {
+    private fun determineNextScreen(player: Player, session: DialogSession) {
         when (session.currentScreen) {
             "rules", "rules_en" -> {
                 val nextScreen = when (session.selectedPurpose) {
@@ -312,18 +291,6 @@ class DialogManager(private val plugin: SimpleDialog) {
                 closeDialog(player)
             }
         }
-    }
-
-    private fun goBack(player: Player, session: DialogSession) {
-        val previousScreen = if (session.language == "ja") "sightseeing" else "sightseeing_en"
-        showDialog(player, previousScreen)
-    }
-
-    private fun saveGenresAndClose(player: Player, session: DialogSession) {
-        if (session.selectedGenres.isNotEmpty()) {
-            plugin.playerDataManager.setGenres(player.uniqueId, session.selectedGenres)
-        }
-        closeDialog(player)
     }
 
     fun closeDialog(player: Player) {
