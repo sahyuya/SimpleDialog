@@ -5,65 +5,71 @@ import org.bukkit.configuration.file.FileConfiguration
 import org.bukkit.configuration.file.YamlConfiguration
 import java.io.File
 
+// 設定ファイルの読み込みと管理を行うクラス
 class ConfigManager(private val plugin: SimpleDialog) {
 
+    // 初回参加時にDialogを表示するかどうか
     var showOnFirstJoin: Boolean = true
         private set
 
-    var maxPlaytime: Long = 10800L
+    // タグを表示する最大プレイ時間（分）
+    var maxPlaytime: Long = 180L
         private set
 
-    var tagFormat: String = "&7[&e{purpose}&7] {genres}"
-        private set
-
+    // 目的タグの色（建築）
     var buildingColor: String = "&a"
         private set
 
+    // 目的タグの色（観光）
     var sightseeingColor: String = "&b"
         private set
 
+    // ジャンルタグの色
     var genreColor: String = "&6"
         private set
 
-    var cleanupOnTagRemoval: Boolean = true
-        private set
-
+    // Dialog設定ファイル（日本語）
     lateinit var dialogsJa: FileConfiguration
         private set
 
+    // Dialog設定ファイル（英語）
     lateinit var dialogsEn: FileConfiguration
         private set
 
+    // Form設定ファイル（日本語・Bedrock向け）
     lateinit var formsJa: FileConfiguration
         private set
 
+    // Form設定ファイル（英語・Bedrock向け）
     lateinit var formsEn: FileConfiguration
         private set
 
+    // config.ymlを読み込む
     fun loadConfig() {
         plugin.saveDefaultConfig()
         plugin.reloadConfig()
 
         val config = plugin.config
         showOnFirstJoin = config.getBoolean("show-on-first-join", true)
-        maxPlaytime = config.getLong("tag.max-playtime", 180L) // minutes
-        tagFormat = config.getString("tag.format") ?: "&7[&e{purpose}&7] {genres}"
+        maxPlaytime = config.getLong("tag.max-playtime", 180L)
         buildingColor = config.getString("tag.purpose-colors.building") ?: "&a"
         sightseeingColor = config.getString("tag.purpose-colors.sightseeing") ?: "&b"
         genreColor = config.getString("tag.genre-color") ?: "&6"
-        cleanupOnTagRemoval = config.getBoolean("cleanup-on-tag-removal", true)
     }
 
+    // ダイアログYAMLファイルを読み込む
     fun loadDialogs() {
         dialogsJa = loadResourceFile("dialogs_ja.yml")
         dialogsEn = loadResourceFile("dialogs_en.yml")
     }
 
+    // フォームYAMLファイルを読み込む（Bedrock向け）
     fun loadForms() {
         formsJa = loadResourceFile("forms_ja.yml")
         formsEn = loadResourceFile("forms_en.yml")
     }
 
+    // リソースファイルをプラグインフォルダから読み込む（なければデフォルトをコピー）
     private fun loadResourceFile(fileName: String): FileConfiguration {
         val file = File(plugin.dataFolder, fileName)
         if (!file.exists()) {
@@ -72,30 +78,30 @@ class ConfigManager(private val plugin: SimpleDialog) {
         return YamlConfiguration.loadConfiguration(file)
     }
 
+    // 全設定ファイルをデフォルトから再生成する
     fun regenerateFiles() {
-        // Delete existing files
-        val configFile = File(plugin.dataFolder, "config.yml")
-        val dialogsJaFile = File(plugin.dataFolder, "dialogs_ja.yml")
-        val dialogsEnFile = File(plugin.dataFolder, "dialogs_en.yml")
-        val formsJaFile = File(plugin.dataFolder, "forms_ja.yml")
-        val formsEnFile = File(plugin.dataFolder, "forms_en.yml")
-
-        configFile.delete()
-        dialogsJaFile.delete()
-        dialogsEnFile.delete()
-        formsJaFile.delete()
-        formsEnFile.delete()
-
-        // Recreate files
-        plugin.saveResource("config.yml", true)
-        plugin.saveResource("dialogs_ja.yml", true)
-        plugin.saveResource("dialogs_en.yml", true)
-        plugin.saveResource("forms_ja.yml", true)
-        plugin.saveResource("forms_en.yml", true)
-
-        // Reload
+        listOf("config.yml", "dialogs_ja.yml", "dialogs_en.yml", "forms_ja.yml", "forms_en.yml")
+            .forEach { fileName ->
+                File(plugin.dataFolder, fileName).delete()
+                plugin.saveResource(fileName, true)
+            }
         loadConfig()
         loadDialogs()
         loadForms()
+    }
+
+    // 指定したファイルのみデフォルトから再生成する
+    // target: "config" / "dialogs_ja" / "dialogs_en" / "forms_ja" / "forms_en"
+    fun regenerateFile(target: String) {
+        val fileName = when (target) {
+            "config"     -> "config.yml"
+            "dialogs_ja" -> "dialogs_ja.yml"
+            "dialogs_en" -> "dialogs_en.yml"
+            "forms_ja"   -> "forms_ja.yml"
+            "forms_en"   -> "forms_en.yml"
+            else         -> return
+        }
+        File(plugin.dataFolder, fileName).delete()
+        plugin.saveResource(fileName, true)
     }
 }

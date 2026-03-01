@@ -4,11 +4,6 @@
 welcome_en:
   title: "&6&lWelcome!"
   sections:
-    - type: "buttons"
-      items:
-        - key: "language_switch"
-          text: "&f日本語"
-          action: "switch_language"
     - type: "text"
       lines:
         - "&eWelcome to Oyasai Server!"
@@ -27,6 +22,11 @@ welcome_en:
           action: "select_purpose"
           purpose: "sightseeing"
           next: "rules_en"
+    - type: "buttons"
+      items:
+        - key: "language_switch"
+          text: "&f日本語"
+          action: "switch_language"
 
 # Rules Screen
 rules_en:

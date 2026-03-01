@@ -2,21 +2,19 @@ package com.github.sahyuya.simpleDialog.data
 
 import com.github.sahyuya.simpleDialog.SimpleDialog
 import com.google.gson.JsonParser
-import org.bukkit.configuration.file.FileConfiguration
 import org.bukkit.configuration.file.YamlConfiguration
 import java.io.File
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
+// DynamicProfileのJSONからプレイ時間を読み取るクラス
 class DynamicProfileReader(private val plugin: SimpleDialog) {
 
     private val dynamicProfileDir = File(plugin.dataFolder.parentFile, "DynamicProfile/UserStatsJSON")
 
-    /**
-     * Get player's total playtime in minutes from DynamicProfile
-     * Returns null if player data doesn't exist
-     */
+    // プレイヤーのプレイ時間（分）を取得する。ファイルが存在しない場合はnullを返す
     fun getPlaytime(uuid: UUID): Long? {
+        // ファイル名はUUID文字列（拡張子なし）
         val playerFile = File(dynamicProfileDir, uuid.toString())
         if (!playerFile.exists() || !playerFile.isFile) {
             return null
@@ -25,54 +23,45 @@ class DynamicProfileReader(private val plugin: SimpleDialog) {
         return try {
             val jsonContent = playerFile.readText()
             val jsonObject = JsonParser.parseString(jsonContent).asJsonObject
-
-            // playTime is stored in minutes in DynamicProfile
+            // DynamicProfileのplayTimeは分単位
             jsonObject.get("playTime")?.asLong
         } catch (e: Exception) {
-            plugin.logger.warning("Failed to read DynamicProfile data for $uuid: ${e.message}")
+            plugin.logger.warning("DynamicProfileデータの読み込みに失敗しました ($uuid): ${e.message}")
             null
         }
     }
 
-    /**
-     * Check if player is new (playTime = 0 in DynamicProfile)
-     */
+    // 初回参加プレイヤーかどうかを判定する（playTime=0またはファイルなし）
     fun isNewPlayer(uuid: UUID): Boolean {
         val playtime = getPlaytime(uuid)
         return playtime == null || playtime == 0L
     }
-
-    /**
-     * Check if player has exceeded max playtime
-     */
-    fun hasExceededMaxPlaytime(uuid: UUID, maxPlaytimeMinutes: Long): Boolean {
-        val playtime = getPlaytime(uuid) ?: return false
-        return playtime > maxPlaytimeMinutes
-    }
 }
 
+// プレイヤーの目的・ジャンルデータを管理するクラス
 class PlayerDataManager(private val plugin: SimpleDialog) {
 
     private val dataFile = File(plugin.dataFolder, "playerdata.yml")
-    private lateinit var data: FileConfiguration
 
+    // メモリ上のプレイヤーデータ
     private val playerData = ConcurrentHashMap<UUID, PlayerData>()
 
     val dynamicProfileReader = DynamicProfileReader(plugin)
 
+    // データをYAMLファイルから読み込む
     fun loadData() {
         if (!dataFile.exists()) {
             dataFile.parentFile.mkdirs()
             dataFile.createNewFile()
+            return
         }
 
-        data = YamlConfiguration.loadConfiguration(dataFile)
+        val config = YamlConfiguration.loadConfiguration(dataFile)
 
-        // Load player data
         playerData.clear()
-        for (key in data.getKeys(false)) {
-            val uuid = UUID.fromString(key)
-            val section = data.getConfigurationSection(key) ?: continue
+        for (key in config.getKeys(false)) {
+            val uuid = runCatching { UUID.fromString(key) }.getOrNull() ?: continue
+            val section = config.getConfigurationSection(key) ?: continue
 
             val purpose = section.getString("purpose")
             val genres = section.getStringList("genres")
@@ -80,26 +69,33 @@ class PlayerDataManager(private val plugin: SimpleDialog) {
             playerData[uuid] = PlayerData(purpose, genres.toMutableList())
         }
 
-        // Clean up expired players
-        cleanupExpiredPlayers()
+        plugin.logger.info("プレイヤーデータを読み込みました（${playerData.size}件）")
     }
 
+    // データをYAMLファイルに保存する
     fun saveData() {
-        data = YamlConfiguration()
+        val config = YamlConfiguration()
 
-        for ((uuid, playerData) in playerData) {
-            val section = data.createSection(uuid.toString())
-            playerData.purpose?.let { section.set("purpose", it) }
-            section.set("genres", playerData.genres)
+        for ((uuid, data) in playerData) {
+            val section = config.createSection(uuid.toString())
+            data.purpose?.let { section.set("purpose", it) }
+            if (data.genres.isNotEmpty()) {
+                section.set("genres", data.genres)
+            }
         }
 
-        data.save(dataFile)
+        config.save(dataFile)
     }
 
     fun getPlayerData(uuid: UUID): PlayerData {
         return playerData.computeIfAbsent(uuid) {
             PlayerData(null, mutableListOf())
         }
+    }
+
+    // データが存在する場合のみ返す（存在しなければnull）
+    fun getPlayerDataOrNull(uuid: UUID): PlayerData? {
+        return playerData[uuid]
     }
 
     fun removePlayerData(uuid: UUID) {
@@ -111,8 +107,7 @@ class PlayerDataManager(private val plugin: SimpleDialog) {
     }
 
     fun setPurpose(uuid: UUID, purpose: String) {
-        val data = getPlayerData(uuid)
-        data.purpose = purpose
+        getPlayerData(uuid).purpose = purpose
     }
 
     fun setGenres(uuid: UUID, genres: List<String>) {
@@ -125,64 +120,51 @@ class PlayerDataManager(private val plugin: SimpleDialog) {
         return playerData[uuid]?.genres
     }
 
+    // タグを完全消去し、データも削除する
     fun clearTags(uuid: UUID) {
-        val data = playerData[uuid] ?: return
-        data.purpose = null
-        data.genres.clear()
-
-        if (plugin.configManager.cleanupOnTagRemoval) {
-            removePlayerData(uuid)
-        }
+        playerData.remove(uuid)
+        saveData()
     }
 
+    // DynamicProfileからプレイ時間（分）を取得する。取得できない場合は0を返す
     fun getPlaytime(uuid: UUID): Long {
         return dynamicProfileReader.getPlaytime(uuid) ?: 0L
     }
 
+    // 初回参加かどうか（DynamicProfile未記録 または playTime=0、かつplayerdata未登録）
     fun isNewPlayer(uuid: UUID): Boolean {
-        // New player if: DynamicProfile playTime = 0 AND not in playerdata list
         return dynamicProfileReader.isNewPlayer(uuid) && !hasPlayerData(uuid)
     }
 
+    // Dialogを表示すべきかどうかを判定する
     fun shouldShowDialog(uuid: UUID): Boolean {
-        // Show if new player OR (has data and within max playtime)
-        if (isNewPlayer(uuid)) {
-            return true
-        }
+        // 新規プレイヤーは常に表示
+        if (isNewPlayer(uuid)) return true
 
-        if (!hasPlayerData(uuid)) {
-            return false
-        }
-
+        // maxPlaytime以内のプレイヤーのみ表示
         val playtime = getPlaytime(uuid)
-        val maxPlaytime = plugin.configManager.maxPlaytime
-        return playtime <= maxPlaytime
+        return playtime <= plugin.configManager.maxPlaytime
     }
 
-    /**
-     * Clean up players who have exceeded max playtime
-     */
+    // maxPlaytimeを超えているプレイヤーのデータを一括削除する
     fun cleanupExpiredPlayers() {
         val maxPlaytime = plugin.configManager.maxPlaytime
-        val toRemove = mutableListOf<UUID>()
-
-        for (uuid in playerData.keys) {
-            if (dynamicProfileReader.hasExceededMaxPlaytime(uuid, maxPlaytime)) {
-                toRemove.add(uuid)
-            }
+        val toRemove = playerData.keys.filter { uuid ->
+            dynamicProfileReader.getPlaytime(uuid)?.let { it > maxPlaytime } ?: false
         }
+
+        if (toRemove.isEmpty()) return
 
         toRemove.forEach { uuid ->
-            removePlayerData(uuid)
-            plugin.logger.info("Removed expired player data for $uuid")
+            playerData.remove(uuid)
+            plugin.logger.info("期限切れプレイヤーデータを削除しました: $uuid")
         }
 
-        if (toRemove.isNotEmpty()) {
-            saveData()
-        }
+        saveData()
     }
 }
 
+// プレイヤーごとの目的・ジャンルデータ
 data class PlayerData(
     var purpose: String?,
     val genres: MutableList<String>

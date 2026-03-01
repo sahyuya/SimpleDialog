@@ -51,10 +51,10 @@ class SimpleDialog : JavaPlugin() {
         // Register the command using reflection to access CommandMap
         server.scheduler.runTask(this, Runnable {
             try {
-                // Create a simple command wrapper
-                val command = object : org.bukkit.command.Command(
+                // Register /simpledialog (sd) command
+                val sdCommand = object : org.bukkit.command.Command(
                     "simpledialog",
-                    "SimpleDialog main command",
+                    "SimpleDialog メインコマンド（OP専用）",
                     "/simpledialog <reload|enable|disable|cleartag|show|regenerate>",
                     listOf("sd")
                 ) {
@@ -75,30 +75,63 @@ class SimpleDialog : JavaPlugin() {
                     }
                 }
 
-                command.permission = "simpledialog.admin"
-                server.commandMap.register("simpledialog", command)
+                sdCommand.permission = "simpledialog.admin"
+                server.commandMap.register("simpledialog", sdCommand)
 
-                logger.info("Commands registered successfully!")
+                // /welcomeコマンドを登録（誰でも使用可能、maxPlaytime内のみ）
+                val welcomeCommand = object : org.bukkit.command.Command(
+                    "welcome",
+                    "ウェルカム画面を自分に表示します",
+                    "/welcome",
+                    emptyList()
+                ) {
+                    override fun execute(
+                        sender: org.bukkit.command.CommandSender,
+                        commandLabel: String,
+                        args: Array<out String>
+                    ): Boolean {
+                        if (sender !is org.bukkit.entity.Player) {
+                            sender.sendMessage(net.kyori.adventure.text.Component.text("プレイヤーとして実行してください。")
+                                .color(net.kyori.adventure.text.format.NamedTextColor.RED))
+                            return true
+                        }
+
+                        // maxPlaytime内のプレイヤーのみ表示できる
+                        if (!playerDataManager.shouldShowDialog(sender.uniqueId)) {
+                            sender.sendMessage(net.kyori.adventure.text.Component.text("プレイ時間が上限を超えているため、案内を表示できません。")
+                                .color(net.kyori.adventure.text.format.NamedTextColor.RED))
+                            return true
+                        }
+
+                        // Java/Bedrock両対応でウェルカム画面を表示する
+                        com.github.sahyuya.simpleDialog.util.DialogUtil.showWelcomeScreen(sender, this@SimpleDialog)
+                        return true
+                    }
+                }
+
+                server.commandMap.register("welcome", welcomeCommand)
+
+                logger.info("コマンドの登録が完了しました！")
             } catch (e: Exception) {
-                logger.warning("Failed to register command: ${e.message}")
+                logger.warning("コマンドの登録に失敗しました: ${e.message}")
                 e.printStackTrace()
             }
         })
 
-        // Start tag update task
+        // タグ定期更新タスクを開始する
         tagManager.startUpdateTask()
 
-        logger.info("SimpleDialog has been enabled!")
+        logger.info("SimpleDialogが有効になりました！")
     }
 
     override fun onDisable() {
-        // Save data
+        // データを保存する
         playerDataManager.saveData()
 
-        // Stop tasks
+        // タスクを停止する
         tagManager.stopUpdateTask()
 
-        logger.info("SimpleDialog has been disabled!")
+        logger.info("SimpleDialogが無効になりました！")
     }
 
     fun reload() {
@@ -107,6 +140,6 @@ class SimpleDialog : JavaPlugin() {
         configManager.loadForms()
         playerDataManager.loadData()
         tagManager.updateAllTags()
-        logger.info("SimpleDialog has been reloaded!")
+        logger.info("SimpleDialogをリロードしました！")
     }
 }

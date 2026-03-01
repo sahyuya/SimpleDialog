@@ -167,9 +167,9 @@ class DialogManager(private val plugin: SimpleDialog) {
         val currentScreen = session.currentScreen
 
         val keyString = actionKey.value()
-        plugin.logger.info("Handling dialog action: $keyString")
+        plugin.logger.info("ダイアログアクション処理: $keyString")
 
-        // Save checkboxes first if responseView exists (before changing screen)
+        // 画面遷移前にチェックボックスの状態を保存する
         if (responseView != null) {
             saveCheckboxes(player, session, currentScreen, responseView)
         }
@@ -183,11 +183,11 @@ class DialogManager(private val plugin: SimpleDialog) {
         val screen = config.getConfigurationSection(currentScreen) ?: return
         val sections = screen.getList("sections") as? List<Map<String, Any>> ?: emptyList()
 
-        // Extract button key from action key (format: "screenId_buttonKey")
+        // アクションキーからボタンキーを抽出する（形式: "screenId_buttonKey"）
         val buttonKey = keyString.substringAfter("${currentScreen}_")
-        plugin.logger.info("Button key: $buttonKey")
+        plugin.logger.info("ボタンキー: $buttonKey")
 
-        // Find the button in sections
+        // sectionsからボタンのデータを検索する
         var buttonData: Map<String, Any>? = null
         for (section in sections) {
             val type = section["type"] as? String ?: continue
@@ -199,12 +199,12 @@ class DialogManager(private val plugin: SimpleDialog) {
         }
 
         if (buttonData == null) {
-            plugin.logger.warning("Button not found: $buttonKey in screen: $currentScreen")
+            plugin.logger.warning("ボタンが見つかりません: $buttonKey (画面: $currentScreen)")
             return
         }
 
         val action = buttonData["action"] as? String ?: "close"
-        plugin.logger.info("Button action: $action")
+        plugin.logger.info("ボタンアクション: $action")
 
         when (action) {
             "switch_language" -> {
@@ -240,6 +240,7 @@ class DialogManager(private val plugin: SimpleDialog) {
         }
     }
 
+    // チェックボックスの状態をプレイヤーデータに保存し、タグを即座に更新する
     private fun saveCheckboxes(player: Player, session: DialogSession, screenId: String, responseView: DialogResponseView) {
         val config = if (session.language == "ja") {
             plugin.configManager.dialogsJa
@@ -252,7 +253,7 @@ class DialogManager(private val plugin: SimpleDialog) {
 
         val selectedGenres = mutableListOf<String>()
 
-        // Find checkboxes section
+        // checkboxesセクションからチェック状態を取得する
         for (section in sections) {
             val type = section["type"] as? String ?: continue
             if (type == "checkboxes") {
@@ -269,9 +270,14 @@ class DialogManager(private val plugin: SimpleDialog) {
             }
         }
 
-        if (selectedGenres.isNotEmpty()) {
-            plugin.playerDataManager.setGenres(player.uniqueId, selectedGenres)
-        }
+        plugin.logger.info("${player.name} のジャンル選択を保存します: $selectedGenres")
+
+        // 空配列でも上書きして確実に反映（チェックを全て外した場合も対応）
+        plugin.playerDataManager.setGenres(player.uniqueId, selectedGenres)
+        plugin.playerDataManager.saveData()
+
+        // タグを即座に更新する
+        plugin.tagManager.updateTag(player)
     }
 
     private fun determineNextScreen(player: Player, session: DialogSession) {
